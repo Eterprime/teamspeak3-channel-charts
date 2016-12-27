@@ -16,21 +16,24 @@ Application which allows you to generate clients activity charts for given chann
   ```
 
 3. Add your server IP address to `query_ip_whitelist.txt` in main directory of TeamSpeak3 server.
+
 4. Set correct permissions for `cache` and `output` directories
   ```bash
   chmod -R +rw cache/ output/
   ```
-  
-5. To run application
-  ```bash
-  php statistics
-  ```
-  *To run application as background process you can use:*
-  ```bash
-  screen -AdmS EterprimeChannelCharts php statistics
-  ```
-  *or*
-  ```bash
-  nohup php statistics &
-  ```
 
+## How to run application?
+### For Linux
+```bash
+php statistics
+```
+To run application as background process you can use:
+```bash
+screen -AdmS EterprimeChannelCharts php statistics
+```
+or
+```bash
+nohup php statistics &
+```
+### For Windows
+To run application just run `statistics.bat` file which detect your PHP installation and execute script.
