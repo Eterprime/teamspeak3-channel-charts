@@ -1,0 +1,189 @@
+<?php
+
+/**
+ * Aplikacja stworzona przez Adams @ Eterprime na
+ * potrzeby konkursu organizowanego przez MPCForum.
+ *
+ * @author Adams <lukasz.adamski@eterprime.eu>
+ * @version 1.0
+ * @license GNU GPL v3
+ */
+
+date_default_timezone_set('Europe/Warsaw');
+error_reporting(0);
+ 
+define('BASEDIR', dirname(__FILE__) . '/');
+define('LIBDIR', BASEDIR . 'lib/');
+define('OUTPUTDIR', BASEDIR . 'output/');
+define('CACHEDIR', BASEDIR . 'cache/');
+
+set_include_path(get_include_path() . PATH_SEPARATOR . LIBDIR);
+
+include_once 'teamspeak3.php';
+include_once 'jpgraph/src/jpgraph.php';
+include_once 'jpgraph/src/jpgraph_line.php';
+
+if (!file_exists('config.php') || !is_readable('config.php'))
+    die('Failed to load config.php file!');
+
+$config = include_once BASEDIR . 'config.php';
+
+function generate_graph($f, $name, $data, $series)
+{
+    $file = OUTPUTDIR . $f . '.png';
+    
+    if (file_exists($file))
+        @unlink($file);
+    
+    $graph = new Graph(750, 280);
+    $graph->SetScale('textlin');
+
+    $theme_class = new UniversalTheme;
+
+    $graph->SetTheme($theme_class);
+    $graph->img->SetAntiAliasing(false);
+    $graph->title->Set($name);
+    $graph->SetBox(false);
+
+    $graph->img->SetAntiAliasing();
+
+    $graph->yaxis->HideZeroLabel();
+    $graph->yaxis->HideLine(false);
+    $graph->yaxis->HideTicks(false,false);
+
+    $graph->xgrid->Show();
+    $graph->xgrid->SetLineStyle('solid');
+    $graph->xaxis->SetTickLabels($series);
+    $graph->xgrid->SetColor('#E3E3E3');
+    
+    $p1 = new LinePlot($data);
+    $graph->Add($p1);
+    $p1->SetColor('#6495ED');
+    
+    $graph->Stroke($file);
+}
+
+function get_cache($key, $schema = [])
+{
+    $file = CACHEDIR . md5($key);
+    
+    if (file_exists($file))
+        return unserialize(file_get_contents($file));
+    
+    return $schema;
+}
+
+function set_cache($key, $value)
+{
+    file_put_contents(CACHEDIR . md5($key), serialize($value));
+}
+
+function ticks_per_second($seconds)
+{
+    global $ticks;
+    
+    return ($ticks != 0 && $ticks % $seconds == 0);
+}
+
+function data(array $ts3output)
+{
+    return $ts3output['data'];
+}
+
+function success(array $ts3output)
+{
+    return $ts3output['success'];
+}
+
+function failure(array $ts3output)
+{
+    return !($ts3output['success']);
+}
+
+print '[>] TS3 Channel Charts by Adams <adams@eterprime.eu>' . PHP_EOL;
+print '[>] Connecting to ServerQuery' . PHP_EOL;
+
+$ts = new ts3admin($config['serverquery']['hostname'], $config['serverquery']['queryport']);
+
+if (failure($ts->connect()))
+    die('Failed to connect TeamSpeak3 ServerQuery - please check your configuration.');
+
+if (failure($ts->login($config['serverquery']['username'], $config['serverquery']['password'])))
+    die('Failed to login into ServerQuery, maybe wrong password?');
+else
+{
+    if (failure($ts->selectServer($config['serverquery']['instance'], 'serverId')))
+        die('Failed to select TeamSpeak3 server instance.');
+}
+
+if (failure($ts->setName($config['serverquery']['nickname'])))
+    die('Failed to set nickname in ServerQuery.');
+
+function get_channel_tree_clients($parent, &$channellist)
+{
+    if (!$parent)
+        return 0;
+
+    $online = $parent['total_clients'];
+
+    foreach ($channellist as $channel)
+    {
+        if ($channel['pid'] == $parent['cid'])
+            $online += get_channel_tree_clients($channel, $channellist);
+    }
+
+    return $online;
+}
+
+print '[>] Working ...' . PHP_EOL;
+
+$ticks = 0;
+
+while (1)
+{
+    if (ticks_per_second($config['scan_interval']))
+    {
+        $channellist = data($ts->channelList());
+        $channels = [];
+        
+        foreach ($channellist as $ch)
+        {
+            if (!in_array($ch['pid'], $config['sections']))
+                continue;
+            
+            $channels[] = $ch;
+        }
+        
+        foreach ($channels as $channel)
+        {
+            $c = get_cache($channel['cid'], [ 'clients' => [] ]);
+            
+            while (count($c['clients']) > $config['max_scans'])
+                array_shift($c['clients']);
+            
+            $hour = @date('H:i');
+            $clients = get_channel_tree_clients($channel, $channellist);
+            
+            if (isset($c['clients'][$hour]))
+            {
+                if ($c['clients'][$hour] < $clients)
+                    $c['clients'][$hour] = $clients;
+            } else
+                $c['clients'][$hour] = $clients;
+            
+            if (count($c['clients']) > 1)
+                generate_graph('channel_' . $channel['cid'], $channel['channel_name'], array_values($c['clients']), array_keys($c['clients']));
+            
+            set_cache($channel['cid'], $c);
+        }
+    }
+    
+    if (ticks_per_second(2 * 60))
+        $ts->whoAmI();
+    
+    if (ticks_per_second(24 * 60 * 60))
+        $ticks = 0;
+    
+    sleep(1);
+    $ticks++;
+}
