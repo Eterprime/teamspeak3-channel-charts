@@ -1,8 +1,25 @@
 # TeamSpeak3 Channel Charts
+
+- [Introdution](#introdution)
+- [Requirements](#requirements)
+- [Installation guide](#installation-guide)
+- [How to run application?](#how-to-run-application)
+	- [For Linux](#for-linux)
+  - [For Windows ](#for-windows)
+
+<a name="introdution"></a>
+## Introdution
 Application which allows you to generate clients activity charts for given channels on TeamSpeak3 server.
 
 ![Example chart](/example_chart.jpg)
 
+<a name="requirements"></a>
+## Requirements
+
+- PHP (version >= 5.6.0)
+- [PHP GD extension](http://php.net/manual/en/image.installation.php)
+
+<a name="installation-guide"></a>
 ## Installation guide
 1. Download package via git clone or download zip archive from repository. Then install PHP (version >=5.6) with [GD extension](http://php.net/manual/en/image.installation.php). 
   ```bash
@@ -22,7 +39,10 @@ Application which allows you to generate clients activity charts for given chann
   chmod -R +rw cache/ output/
   ```
 
+<a name="how-to-run-application"></a>
 ## How to run application?
+
+<a name="for-linux"></a>
 ### For Linux
 ```bash
 php statistics
@@ -35,5 +55,7 @@ or
 ```bash
 nohup php statistics &
 ```
+
+<a name="for-windows"></a>
 ### For Windows
 To run application just run `statistics.bat` file which detect your PHP installation and execute script.
