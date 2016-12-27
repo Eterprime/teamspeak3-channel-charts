@@ -1,6 +1,8 @@
 # TeamSpeak3 Channel Charts
 Application which allows you to generate clients activity charts for given channels on TeamSpeak3 server.
 
+![Example chart](/example_chart.jpg)
+
 ## Installation guide
 1. Download package via git clone or download zip archive from repository. Then install PHP (version >=5.6) with [GD extension](http://php.net/manual/en/image.installation.php). 
   ```bash
